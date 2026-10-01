@@ -232,7 +232,7 @@ final class ItemImageStore27 {
     }
 
     /// A glyph cut out of a capture of the bar.
-    private struct ProcessedTile: @unchecked Sendable {
+    private struct ProcessedTile: Sendable {
         let key: String
         let image: CGImage
         let digest: Int
