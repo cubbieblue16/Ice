@@ -221,7 +221,7 @@ extension HIDEventManager {
         else {
             return
         }
-        let clickLocation = MouseHelpers.location?.coreGraphics
+        let clickLocation = MouseHelpers.locationCoreGraphics
 
         Task {
             if await isMenuBarItem(at: clickLocation) {
@@ -344,7 +344,7 @@ extension HIDEventManager {
                 appState.settings.advanced.enableSecondaryContextMenu,
                 isMouseInsideEmptyMenuBarSpace(appState: appState, screen: screen),
                 let mouseLocation = MouseHelpers.locationAppKit,
-                await !isMenuBarItem(at: MouseHelpers.location?.coreGraphics)
+                await !isMenuBarItem(at: MouseHelpers.locationCoreGraphics)
             else {
                 return
             }
