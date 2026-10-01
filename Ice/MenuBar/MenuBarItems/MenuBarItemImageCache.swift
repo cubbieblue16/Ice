@@ -417,10 +417,30 @@ final class MenuBarItemImageCache: ObservableObject {
         await updateCache(sections: sectionsNeedingDisplay)
     }
 
+    // MARK: Display Images
+
+    /// The image to draw for the given item: its cached image or, on macOS 27, where
+    /// it has none, the icon of the application that owns it (see ``ItemFallbackIcon27``).
+    ///
+    /// Returns `nil` for an item with neither.
+    @MainActor
+    func displayImage(for item: MenuBarItem) -> NSImage? {
+        if let cachedImage = images[item.tag] {
+            return cachedImage.nsImage
+        }
+        if #available(macOS 27.0, *) {
+            return ItemFallbackIcon27.tile(for: item)
+        }
+        return nil
+    }
+
     // MARK: Cache Failed
 
     /// Returns a Boolean value that indicates whether caching menu bar items
     /// failed for the given section.
+    ///
+    /// On macOS 27 an item with no cached image still has its application's icon to
+    /// be drawn with, so caching only failed when no item has either.
     @MainActor
     func cacheFailed(for section: MenuBarSection.Name) -> Bool {
         guard ScreenCapture.cachedCheckPermissions() else {
@@ -433,6 +453,9 @@ final class MenuBarItemImageCache: ObservableObject {
         let keys = Set(images.keys)
         for item in items where keys.contains(item.tag) {
             return false
+        }
+        if #available(macOS 27.0, *) {
+            return !items.contains { ItemFallbackIcon27.tile(for: $0) != nil }
         }
         return true
     }

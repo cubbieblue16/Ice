@@ -520,10 +520,7 @@ private struct IceBarItemView: View {
     }
 
     private var image: NSImage? {
-        guard let cachedImage = imageCache.images[item.tag] else {
-            return nil
-        }
-        return cachedImage.nsImage
+        imageCache.displayImage(for: item)
     }
 
     var body: some View {

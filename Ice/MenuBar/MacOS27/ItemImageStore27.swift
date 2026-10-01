@@ -42,7 +42,7 @@ final class ItemImageStore27 {
     /// The margin left on each side of a glyph, in points, so items are spaced evenly and
     /// with the menu bar's own rhythm: its glyphs sit 18 to 29 points apart, median 22
     /// (measured on macOS 27.0), which is twice this margin.
-    private nonisolated static let glyphMargin: CGFloat = 11
+    nonisolated static let glyphMargin: CGFloat = 11
 
     private let logger = Logger(category: "ItemImageStore27")
     private nonisolated static let processingLogger = Logger(category: "ItemImageStore27")

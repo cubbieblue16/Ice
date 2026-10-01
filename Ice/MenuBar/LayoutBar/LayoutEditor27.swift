@@ -147,7 +147,7 @@ struct LayoutEditor27: View {
     }
 
     private func tileView(_ tile: LayoutTile) -> some View {
-        Image(nsImage: imageCache.images[tile.item.tag]?.nsImage ?? NSImage(size: tile.item.bounds.size))
+        Image(nsImage: imageCache.displayImage(for: tile.item) ?? NSImage(size: tile.item.bounds.size))
             // Lets Scripts/macos27/verify-layout.sh find the item.
             .accessibilityLabel(tile.displayName)
             .opacity(tile.isEnabled ? 1 : 0.67)
