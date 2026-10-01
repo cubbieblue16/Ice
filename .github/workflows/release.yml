@@ -1,0 +1,120 @@
+name: Release
+
+# Builds Ice for Apple Silicon when a version tag is pushed and attaches the zipped app to a
+# GitHub release. Once the Sparkle key is set up (Scripts/README.md), the release also carries
+# the appcast that Ice's updater reads from
+# https://github.com/cubbieblue16/Ice/releases/latest/download/appcast.xml
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Xcode 27 is not on the macos-26 image, which stops at Xcode 26.6. It ships on the "xcode-27"
+    # image (macOS 27, Apple Silicon, public preview):
+    # https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md
+    runs-on: xcode-27
+    env:
+      # Whether the secret is set, not the key itself: `if:` cannot read secrets, and the key is
+      # handed only to the step that signs with it.
+      HAS_SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 27
+        run: |
+          # The newest Xcode 27 that is not a beta. On image 20260921.0210.1 that is
+          # /Applications/Xcode_27.app (27.0, 27A266a): the image's default, and the Xcode the fork
+          # is built and tested with. 27.1 and 27.2 sit in Xcode_27.1_beta.app and Xcode_27.2_beta.app.
+          XCODE="$(ls -d /Applications/Xcode_27*.app | grep -v -i beta | sort -V | tail -1)"
+          if [ -z "$XCODE" ]; then
+            echo "::error::No release Xcode 27 in /Applications"
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Build
+        run: |
+          # Scripts/install.sh's build: Release, ad hoc signed, hardened runtime off (the comment
+          # there says why). The project names the upstream team and "Apple Development", which the
+          # runner does not have, so the identity is set to ad hoc ("-") and the team cleared.
+          xcodebuild -project Ice.xcodeproj -scheme Ice -configuration Release \
+            -destination 'platform=macOS' -derivedDataPath build -quiet build \
+            ARCHS=arm64 \
+            CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGNING_REQUIRED=NO \
+            ENABLE_HARDENED_RUNTIME=NO
+
+      - name: Verify the app
+        run: |
+          APP=build/Build/Products/Release/Ice.app
+          codesign --verify --deep --strict "$APP"
+          codesign -dv "$APP" 2>&1 | grep -E '^(Identifier|Signature|TeamIdentifier)='
+          lipo -archs "$APP/Contents/MacOS/Ice"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist"
+
+      # -------------------------------------------------------------------------------------------
+      # TODO(Developer ID): sign with Developer ID and notarize. Nothing in this block runs.
+      #
+      # There is no "Developer ID Application" certificate yet, so releases are ad hoc signed:
+      # Gatekeeper blocks their first launch, and Ice's own icon disappears while items are
+      # concealed. The workflow succeeds without the certificate. Once it exists:
+      #   1. Add repository secrets: DEVELOPER_ID_P12 (the exported certificate, base64),
+      #      DEVELOPER_ID_P12_PASSWORD, and an App Store Connect API key for notarytool:
+      #      NOTARY_KEY (the .p8, base64), NOTARY_KEY_ID and NOTARY_ISSUER_ID.
+      #   2. Before "Build", import the certificate into a temporary keychain:
+      #        echo "$DEVELOPER_ID_P12" | base64 --decode > developer-id.p12
+      #        security create-keychain -p ci build.keychain
+      #        security default-keychain -s build.keychain
+      #        security unlock-keychain -p ci build.keychain
+      #        security import developer-id.p12 -k build.keychain -P "$DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+      #        security set-key-partition-list -S apple-tool:,apple: -s -k ci build.keychain
+      #   3. In "Build", replace the four signing settings with
+      #        CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application"
+      #        DEVELOPMENT_TEAM=<team ID> ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS=--timestamp
+      #      Notarization requires the hardened runtime, and with one team throughout Sparkle loads.
+      #   4. After "Verify the app", notarize and staple, so the zip below holds the stapled app:
+      #        echo "$NOTARY_KEY" | base64 --decode > AuthKey.p8
+      #        ditto -c -k --keepParent build/Build/Products/Release/Ice.app notarize.zip
+      #        xcrun notarytool submit notarize.zip --key AuthKey.p8 --key-id "$NOTARY_KEY_ID" \
+      #          --issuer "$NOTARY_ISSUER_ID" --wait
+      #        xcrun stapler staple build/Build/Products/Release/Ice.app
+      #   5. Update the signing notes in Scripts/install.sh, Scripts/README.md and README.md.
+      # -------------------------------------------------------------------------------------------
+
+      - name: Zip
+        run: |
+          mkdir dist
+          ditto -c -k --keepParent build/Build/Products/Release/Ice.app dist/Ice.zip
+
+      - name: Generate the Sparkle appcast
+        if: env.HAS_SPARKLE_KEY == 'true'
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # generate_appcast comes with the Sparkle package the build resolved. It signs the zip
+          # only when the app's SUPublicEDKey matches this private key; otherwise it writes an
+          # appcast that every copy of Ice rejects, so an unsigned result stops the release.
+          mkdir appcast
+          cp dist/Ice.zip appcast/
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            -o dist/appcast.xml \
+            appcast
+          if ! grep -q 'sparkle:edSignature=' dist/appcast.xml; then
+            echo "::error::appcast.xml is unsigned: Ice/Resources/Info.plist needs the SUPublicEDKey that matches SPARKLE_PRIVATE_KEY (Scripts/README.md)"
+            exit 1
+          fi
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true

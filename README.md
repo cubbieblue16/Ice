@@ -3,6 +3,32 @@
     <h1>Ice</h1>
 </div>
 
+## macOS 27 fork
+
+This is [cubbieblue16/Ice](https://github.com/cubbieblue16/Ice), a fork of [jordanbaird/Ice](https://github.com/jordanbaird/Ice) that runs on macOS 27. It builds on two pull requests to upstream:
+
+- [#995](https://github.com/jordanbaird/Ice/pull/995) by [RabenkoYevhenii](https://github.com/RabenkoYevhenii)
+- [#1001](https://github.com/jordanbaird/Ice/pull/1001) by [carlossantos74](https://github.com/carlossantos74)
+
+The way it hides items comes from [Thaw](https://github.com/thaw-app/Thaw), by way of [Barometer](https://github.com/mackid1993/Barometer).
+
+**What works on macOS 27**
+
+- Hiding items in the Hidden and Always-Hidden sections, and showing the hidden section on hover.
+- The Ice Bar, including clicking its items.
+- Arranging items in Settings › Menu Bar Layout. Sections apply to whole applications, and macOS orders the items within each section.
+- Hotkeys and Shortcuts actions.
+
+On earlier versions of macOS the fork behaves like upstream, apart from the Liquid Glass Ice Bar on macOS 26, which can be turned off. It builds for Apple Silicon only.
+
+**Limitation of ad hoc builds.** The fork has no Developer ID certificate yet, so every build is ad hoc signed. On these builds, Ice's own menu bar icon disappears while items are concealed. Set a hotkey in Settings › Hotkeys to reach the hidden items meanwhile.
+
+**Install.** With Xcode 27 installed, run [`Scripts/install.sh`](Scripts/install.sh). It builds Ice and installs it to `~/Applications`. The zips on this fork's [releases](https://github.com/cubbieblue16/Ice/releases) are the same ad hoc build and are not notarized, so macOS blocks their first launch. To allow it, go to System Settings › Privacy & Security. [`Scripts/README.md`](Scripts/README.md) covers releases and update signing.
+
+The fork is licensed under the GPL-3.0, like Ice (see [License](#license)).
+
+---
+
 Ice is a powerful menu bar management tool. While its primary function is hiding and showing menu bar items, it aims to cover a wide variety of additional features to make it one of the most versatile menu bar tools available.
 
 ![Banner](https://github.com/user-attachments/assets/4423085c-4e4b-4f3d-ad0f-90a217c03470)

@@ -1,7 +1,7 @@
 name: Lint Swift Files
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "macos-27" ]
     paths:
       - ".github/workflows/lint.yml"
       - ".swiftlint.yml"
