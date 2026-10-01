@@ -23,8 +23,12 @@ echo "==> Building"
 # --verify --deep --strict` passes all the same, so the script used to install a bundle that
 # could not launch for anyone without a team (reported on jordanbaird/Ice#1006 by @Theralley).
 # A copy installed from here is run by its builder, not distributed, so it loses nothing by it.
+# The project names the upstream team and an "Apple Development" identity that only its owner
+# holds, so the identity is forced to ad hoc ("-") and the team cleared, as release.yml does.
 xcodebuild -project "$ROOT/Ice.xcodeproj" -scheme Ice -configuration Release \
     -destination 'platform=macOS' -derivedDataPath "$DERIVED" build \
+    ARCHS=arm64 \
+    CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGNING_REQUIRED=NO \
     ENABLE_HARDENED_RUNTIME=NO \
     | tail -3
 
