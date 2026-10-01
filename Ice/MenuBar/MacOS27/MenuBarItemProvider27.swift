@@ -149,10 +149,10 @@ enum MenuBarItemProvider27 {
                 return true
             }
             // An item can hand back one of its children instead.
-            guard let parent = value(element, kAXParentAttribute) else {
+            guard let parent = Self.element(element, kAXParentAttribute) else {
                 return false
             }
-            return string(parent as! AXUIElement, kAXSubroleAttribute) == "AXMenuExtra"
+            return string(parent, kAXSubroleAttribute) == "AXMenuExtra"
         }.value
     }
 
