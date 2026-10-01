@@ -555,9 +555,18 @@ final class ItemImageStore27 {
             digests[key] = nil
         }
         let files = expired.values.map { directory.appendingPathComponent($0.fileName) }
-        Task.detached(priority: .utility) {
+        Task.detached(priority: .utility) { [logger] in
             for file in files {
-                try? FileManager.default.removeItem(at: file)
+                do {
+                    try FileManager.default.removeItem(at: file)
+                } catch {
+                    // The entry is already out of the index, so the image is never loaded
+                    // again; a file that cannot be removed is only left on disk, and the
+                    // remaining files are still removed.
+                    logger.error(
+                        "Could not remove the expired item image \(file.lastPathComponent, privacy: .public): \(error, privacy: .public)"
+                    )
+                }
             }
         }
         logger.info("Dropped \(expired.count, privacy: .public) images of items not seen for a long time")
