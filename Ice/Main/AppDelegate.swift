@@ -3,6 +3,7 @@
 //  Ice
 //
 
+import AppIntents
 import OSLog
 import SwiftUI
 
@@ -17,6 +18,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Initial chore work.
         NSSplitViewItem.swizzle()
         MigrationManager(appState: appState).migrateAll()
+
+        // The App Intents in Ice/Intents read the app state through
+        // their @Dependency property.
+        let appState = self.appState
+        AppDependencyManager.shared.add(dependency: appState)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
