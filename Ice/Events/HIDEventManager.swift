@@ -33,8 +33,6 @@ final class HIDEventManager: ObservableObject {
     /// swallowing an unrelated one later.
     private var heldBackReleaseUntil: ContinuousClock.Instant?
 
-
-
     /// A Boolean value that indicates whether the manager is enabled.
     private var isEnabled = false {
         didSet {
@@ -517,8 +515,6 @@ extension HIDEventManager {
         let stored = Defaults.integer(forKey: .macOS27ClickRestoreDelay)
         return .milliseconds(stored > 0 ? min(max(stored, 30), 2000) : 120)
     }
-
-
 
     /// The window numbers currently on screen.
     private static func windowNumbers() -> Set<Int> {

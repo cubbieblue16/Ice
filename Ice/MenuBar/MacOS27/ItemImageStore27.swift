@@ -492,7 +492,9 @@ final class ItemImageStore27 {
             colour: colour
         ))
         keyed.withUnsafeMutableBytes { buffer in
-            bytes.update(from: buffer.bindMemory(to: UInt8.self).baseAddress!, count: count)
+            let keyedBytes = buffer.bindMemory(to: UInt8.self)
+            guard let base = keyedBytes.baseAddress else { return }
+            bytes.update(from: base, count: min(count, keyedBytes.count))
         }
         guard
             let keyedImage = context.makeImage(),
