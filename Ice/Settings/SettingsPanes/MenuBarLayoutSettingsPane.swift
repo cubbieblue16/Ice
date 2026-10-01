@@ -58,8 +58,12 @@ struct MenuBarLayoutSettingsPane: View {
     @ViewBuilder
     private var layoutBars: some View {
         VStack(spacing: 20) {
-            ForEach(MenuBarSection.Name.allCases, id: \.self) { section in
-                layoutBar(for: section)
+            if #available(macOS 27.0, *) {
+                LayoutEditor27(itemManager: itemManager, imageCache: appState.imageCache)
+            } else {
+                ForEach(MenuBarSection.Name.allCases, id: \.self) { section in
+                    layoutBar(for: section)
+                }
             }
         }
         .opacity(hasItems ? 1 : 0.75)
