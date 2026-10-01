@@ -148,7 +148,14 @@ final class ItemImageStore27 {
     /// Captures follow one another rather than overlapping: a single reveal set four of them
     /// going at once, 260–290 ms each (measured 2026-09-16), all asking the display server
     /// for the same strip while MenuBarAgent was animating the bar.
-    func captureActiveMenuBar(appState: AppState, force: Bool = false) async {
+    ///
+    /// `beforeConcealment` is for the capture taken just before Ice first conceals anything: it
+    /// photographs every item the bar still draws, including the ones the concealer is about to
+    /// hide, and it does not wait for a bar that has not started moving. It is always a fresh
+    /// capture, and cancelling the caller cancels it, so a capture that overran its welcome never
+    /// stores tiles cut from a bar that concealment has already rearranged.
+    func captureActiveMenuBar(appState: AppState, force: Bool = false, beforeConcealment: Bool = false) async {
+        let force = force || beforeConcealment
         if !force {
             // A capture already under way photographs the same bar this caller wants.
             if let captureTask {
@@ -165,20 +172,29 @@ final class ItemImageStore27 {
         let previous = captureTask
         let task = Task { [weak self] in
             await previous?.value
-            await self?.performCapture(appState: appState)
+            await self?.performCapture(appState: appState, beforeConcealment: beforeConcealment)
         }
         captureTask = task
-        await task.value
+        if beforeConcealment {
+            await withTaskCancellationHandler {
+                await task.value
+            } onCancel: {
+                task.cancel()
+            }
+        } else {
+            await task.value
+        }
         if captureGeneration == generation {
             captureTask = nil
         }
     }
 
-    private func performCapture(appState: AppState) async {
+    private func performCapture(appState: AppState, beforeConcealment: Bool) async {
         // The bar animates for about 250 ms after concealment changes. A capture taken then
         // photographs items in mid-slide, which are thrown away as unsettled anyway, and adds
-        // its own load at the moment the animation can least afford it.
-        if let remaining = appState.concealer27.timeUntilSettled() {
+        // its own load at the moment the animation can least afford it. Before the first
+        // concealment nothing has changed yet, so there is nothing to wait out.
+        if !beforeConcealment, let remaining = appState.concealer27.timeUntilSettled() {
             try? await Task.sleep(for: remaining)
         }
         let started = ProcessInfo.processInfo.systemUptime
@@ -198,7 +214,9 @@ final class ItemImageStore27 {
         let barHeight = max(screen.frame.maxY - screen.visibleFrame.maxY, 22)
         let stripFrame = CGRect(x: displayBounds.minX, y: displayBounds.minY, width: displayBounds.width, height: barHeight)
         let items = await MenuBarItemProvider27.items()
-        let concealedPIDs = appState.concealer27.concealedPIDs
+        // The concealer has already worked out who it will hide, but until it applies that the
+        // bar still draws those items, and photographing them is the point of this capture.
+        let concealedPIDs = beforeConcealment ? [] : appState.concealer27.concealedPIDs
         guard let captured = await captureStrip(displayID: displayID, size: stripFrame.size) else {
             return
         }
@@ -208,6 +226,10 @@ final class ItemImageStore27 {
             Dictionary(items.map { ($0.tag.description, $0.bounds) }, uniquingKeysWith: { first, _ in first })
         }
         let settled = ItemImages27.settledTags(before: frames(items), after: frames(await MenuBarItemProvider27.items()))
+        if beforeConcealment, Task.isCancelled {
+            logger.debug("Menu bar capture: abandoned, concealment did not wait for it")
+            return
+        }
         let drawn = items.filter { $0.isOnScreen && !$0.isControlItem && !concealedPIDs.contains($0.ownerPID) }
         let tiles = drawn
             .filter { settled.contains($0.tag.description) }

@@ -31,6 +31,18 @@ final class Concealer27: ObservableObject {
     /// (measured on macOS 27.0: about 250 ms, with a margin here).
     private static let settleAfterChange = Duration.milliseconds(400)
 
+    /// Whether the bar has been photographed for the first concealment since launch.
+    ///
+    /// Concealed items are never drawn again, so the images the Ice Bar and the layout editor
+    /// show for them are the ones taken while they were still on the bar. With a layout saved
+    /// before launch, the first concealment came before any capture ran and those applications
+    /// had no image at all. See ``captureBeforeFirstConcealment(appState:)``.
+    private var hasCapturedBeforeFirstConcealment = false
+
+    /// How long the first concealment waits for the bar to be photographed. A capture that is
+    /// slow or stuck costs only this, and then the items are hidden anyway.
+    private static let captureBeforeConcealmentTimeout = Duration.milliseconds(1500)
+
     /// Applications shown for a moment, with the number of callers showing each.
     private var temporarilyShown = [String: Int]()
     private var cancellables = Set<AnyCancellable>()
@@ -146,6 +158,14 @@ final class Concealer27: ObservableObject {
             guard let self, updateGeneration == generation else {
                 return
             }
+            if !target.isEmpty, !hasCapturedBeforeFirstConcealment {
+                hasCapturedBeforeFirstConcealment = true
+                await captureBeforeFirstConcealment(appState: appState)
+                // The bar may have been asked to change again while it was photographed.
+                guard updateGeneration == generation else {
+                    return
+                }
+            }
             do {
                 try await controller.apply(target: target, running: running)
             } catch {
@@ -165,6 +185,47 @@ final class Concealer27: ObservableObject {
             }
             await self.appState?.itemManager.cacheItemsIfNeeded()
             await checkStuckOverflow()
+        }
+    }
+
+    /// Photographs the bar while it still draws everything, so the items about to be concealed
+    /// have an image to show, waiting at most ``captureBeforeConcealmentTimeout``.
+    ///
+    /// This is the store's own capture (`ItemImageStore27/captureActiveMenuBar(appState:force:beforeConcealment:)`),
+    /// asked to ignore who is about to be concealed. When it overruns, it is cancelled so it
+    /// stores nothing taken from a bar that has started to change.
+    private func captureBeforeFirstConcealment(appState: AppState) async {
+        let store = appState.itemImageStore27
+        let timeout = Self.captureBeforeConcealmentTimeout
+        let started = ContinuousClock.now
+        let (outcomes, outcome) = AsyncStream.makeStream(of: Bool.self)
+        let capture = Task {
+            await store.captureActiveMenuBar(appState: appState, beforeConcealment: true)
+            outcome.yield(true)
+        }
+        let timer = Task {
+            do {
+                try await Task.sleep(for: timeout)
+                outcome.yield(false)
+            } catch {
+                // Cancelled because the capture finished first.
+                return
+            }
+        }
+        var finished = false
+        for await captured in outcomes {
+            finished = captured
+            break
+        }
+        timer.cancel()
+        if !finished {
+            capture.cancel()
+        }
+        let elapsed = ContinuousClock.now - started
+        if finished {
+            logger.debug("Photographed the bar before the first concealment in \(elapsed.description, privacy: .public)")
+        } else {
+            logger.debug("Gave up photographing the bar before the first concealment after \(elapsed.description, privacy: .public)")
         }
     }
 
