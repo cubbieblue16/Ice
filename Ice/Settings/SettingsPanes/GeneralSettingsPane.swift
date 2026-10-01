@@ -177,6 +177,9 @@ struct GeneralSettingsPane: View {
         useIceBar
         if settings.useIceBar {
             iceBarLocationPicker
+            if #available(macOS 26.0, *) {
+                iceBarUsesLiquidGlass
+            }
         }
     }
 
@@ -203,6 +206,12 @@ struct GeneralSettingsPane: View {
                 Text("The Ice Bar is centered below the Ice icon.")
             }
         }
+    }
+
+    @ViewBuilder
+    private var iceBarUsesLiquidGlass: some View {
+        Toggle("Use Liquid Glass", isOn: $settings.iceBarUsesLiquidGlass)
+            .annotation("Draw the Ice Bar with Liquid Glass instead of the menu bar's color. The menu bar's color is used while Reduce Transparency is on.")
     }
 
     // MARK: Show Options

@@ -34,6 +34,10 @@ final class GeneralSettings: ObservableObject {
     /// The location where the Ice Bar appears.
     @Published var iceBarLocation: IceBarLocation = .dynamic
 
+    /// A Boolean value that indicates whether the Ice Bar is drawn
+    /// with Liquid Glass. Only consulted on macOS 26 and later.
+    @Published var iceBarUsesLiquidGlass = true
+
     /// A Boolean value that indicates whether the hidden section
     /// should be shown when the mouse pointer clicks in an empty
     /// area of the menu bar.
@@ -87,6 +91,7 @@ final class GeneralSettings: ObservableObject {
         Defaults.ifPresent(key: .showIceIcon, assign: &showIceIcon)
         Defaults.ifPresent(key: .customIceIconIsTemplate, assign: &customIceIconIsTemplate)
         Defaults.ifPresent(key: .useIceBar, assign: &useIceBar)
+        Defaults.ifPresent(key: .iceBarUsesLiquidGlass, assign: &iceBarUsesLiquidGlass)
         Defaults.ifPresent(key: .showOnClick, assign: &showOnClick)
         Defaults.ifPresent(key: .showOnHover, assign: &showOnHover)
         Defaults.ifPresent(key: .showOnScroll, assign: &showOnScroll)
@@ -164,6 +169,13 @@ final class GeneralSettings: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { location in
                 Defaults.set(location.rawValue, forKey: .iceBarLocation)
+            }
+            .store(in: &c)
+
+        $iceBarUsesLiquidGlass
+            .receive(on: DispatchQueue.main)
+            .sink { usesLiquidGlass in
+                Defaults.set(usesLiquidGlass, forKey: .iceBarUsesLiquidGlass)
             }
             .store(in: &c)
 

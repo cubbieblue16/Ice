@@ -288,6 +288,7 @@ private struct IceBarContentView: View {
     @ObservedObject var menuBarManager: MenuBarManager
     @State private var frame = CGRect.zero
     @State private var scrollIndicatorsFlashTrigger = 0
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     let screen: NSScreen
     let section: MenuBarSection.Name
@@ -338,16 +339,63 @@ private struct IceBarContentView: View {
         configuration.current.hasShadow ? 0.5 : 0.33
     }
 
+    /// A Boolean value that indicates whether the bar is drawn with
+    /// Liquid Glass instead of the menu bar's color.
+    ///
+    /// Liquid Glass needs macOS 26 and the user's Use Liquid Glass
+    /// setting. The menu bar's color is used while the system's Reduce
+    /// Transparency setting is on.
+    private var usesLiquidGlass: Bool {
+        guard #available(macOS 26.0, *) else {
+            return false
+        }
+        return appState.settings.general.iceBarUsesLiquidGlass && !reduceTransparency
+    }
+
+    /// The Liquid Glass the bar is drawn with.
+    ///
+    /// The glass carries the menu bar appearance's tint at the strength
+    /// that ``MenuBarItemContainer`` overlays it on the menu bar's color,
+    /// and, like that overlay, drops it in full screen spaces.
+    @available(macOS 26.0, *)
+    private var glass: Glass {
+        let tintOpacity = 0.2
+        guard !appState.activeSpace.isFullscreen else {
+            return .regular
+        }
+        switch configuration.current.tintKind {
+        case .noTint:
+            return .regular
+        case .solid:
+            return .regular.tint(Color(cgColor: configuration.current.tintColor).opacity(tintOpacity))
+        case .gradient:
+            guard let color = configuration.current.tintGradient.averageColor() else {
+                return .regular
+            }
+            return .regular.tint(Color(cgColor: color).opacity(tintOpacity))
+        }
+    }
+
+    private var paddedContent: some View {
+        content
+            .frame(height: contentHeight)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+    }
+
     var body: some View {
         ZStack {
-            content
-                .frame(height: contentHeight)
-                .padding(.horizontal, horizontalPadding)
-                .padding(.vertical, verticalPadding)
-                .menuBarItemContainer(appState: appState, colorInfo: colorManager.colorInfo)
-                .foregroundStyle(colorManager.colorInfo?.color.brightness ?? 0 > 0.67 ? .black : .white)
-                .clipShape(clipShape)
-                .shadow(color: .black.opacity(shadowOpacity), radius: 2.5)
+            if #available(macOS 26.0, *), usesLiquidGlass {
+                paddedContent
+                    .clipShape(clipShape)
+                    .glassEffect(glass, in: clipShape)
+            } else {
+                paddedContent
+                    .menuBarItemContainer(appState: appState, colorInfo: colorManager.colorInfo)
+                    .foregroundStyle(colorManager.colorInfo?.color.brightness ?? 0 > 0.67 ? .black : .white)
+                    .clipShape(clipShape)
+                    .shadow(color: .black.opacity(shadowOpacity), radius: 2.5)
+            }
 
             if configuration.current.hasBorder {
                 clipShape
