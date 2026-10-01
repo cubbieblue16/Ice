@@ -69,24 +69,7 @@ final class LayoutBarItemView: NSView {
         unregisterDraggedTypes()
 
         self.toolTip = item.displayName
-        if #available(macOS 27.0, *) {
-            // Lets Scripts/macos27/verify-layout.sh find the item.
-            setAccessibilityElement(true)
-            setAccessibilityRole(.image)
-            setAccessibilityLabel(item.displayName)
-        }
         self.isEnabled = item.isMovable
-        if #available(macOS 27.0, *), !item.isControlItem {
-            // macOS 27 hides whole applications by bundle identifier, and always keeps
-            // the system items, so anything else cannot change section.
-            if !item.canBeHidden {
-                self.isEnabled = false
-                self.toolTip = "\(item.displayName) — macOS always shows this item"
-            } else if item.sourceApplication?.bundleIdentifier == nil {
-                self.isEnabled = false
-                self.toolTip = "\(item.displayName) — cannot be hidden on this version of macOS"
-            }
-        }
 
         configureCancellables()
     }
