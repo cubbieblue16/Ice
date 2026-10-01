@@ -121,12 +121,24 @@ extension WindowInfo {
     static func wallpaperWindow(from windows: [WindowInfo], for display: CGDirectDisplayID) -> WindowInfo? {
         let displayBounds = CGDisplayBounds(display)
         return windows.first { window in
-            // Wallpaper window belongs to the Dock process, or to WindowManager
-            // on macOS 27 (measured on macOS 27.0).
-            ["com.apple.dock", "com.apple.WindowManager"].contains(window.owningApplication?.bundleIdentifier) &&
+            isWallpaperOwner(window.owningApplication?.bundleIdentifier) &&
             window.title?.hasPrefix("Wallpaper") == true &&
             displayBounds.contains(window.bounds)
         }
+    }
+
+    /// Returns whether the application with the given bundle identifier
+    /// owns the wallpaper window.
+    private static func isWallpaperOwner(_ bundleIdentifier: String?) -> Bool {
+        // Wallpaper window belongs to the Dock process, or to WindowManager
+        // on macOS 27 (measured on macOS 27.0).
+        if bundleIdentifier == "com.apple.dock" {
+            return true
+        }
+        if #available(macOS 27.0, *) {
+            return bundleIdentifier == "com.apple.WindowManager"
+        }
+        return false
     }
 
     /// Creates and returns the wallpaper window for the given display.
