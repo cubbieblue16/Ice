@@ -61,12 +61,13 @@ final class MenuBarAssessmentAssertion27: ConcealmentBackend27 {
 
     /// The system items Ice keeps on the bar.
     ///
-    /// MenuBarAgent numbers them, and on macOS 27.0 only five numbers draw anything: 0 is the
-    /// battery, 2 the clock, 6 Wi-Fi and 8 Control Centre; 1, 3, 4, 5 and 7 draw nothing, and so
-    /// does every number above 8. All of them are accepted, though, up to 127 at least, so the
-    /// range is wider than what this build of macOS draws: a system item added by a later build
-    /// would otherwise be concealed, and Ice hides applications' items, not the system's. The
-    /// range matches the one @carlossantos74 arrived at in jordanbaird/Ice#1001.
+    /// MenuBarAgent numbers them. On the macOS 27.0 machine first measured, 0 is the battery,
+    /// 2 the clock, 6 Wi-Fi and 8 Control Centre, while 1, 3, 4, 5 and 7 draw nothing, and
+    /// nothing there was numbered above 8. Other machines number items higher: with the range
+    /// at 0...63, Screen Mirroring was silently concealed (field measurement in
+    /// jordanbaird/Ice#954, by brentc22). MenuBarAgent ignores a number with no item behind it,
+    /// so the full 0...255 is safe, and it keeps a system item numbered higher, or one added by
+    /// a later build, from being concealed: Ice hides applications' items, not the system's.
     ///
     /// Control Centre's capture indicator — the green camera button, orange for the microphone,
     /// indigo for screen sharing — is not one of these numbers and cannot be kept. It is drawn
@@ -74,7 +75,7 @@ final class MenuBarAssessmentAssertion27: ConcealmentBackend27 {
     /// number to 127, Control Centre's bundle identifier, the capturing application's own. The
     /// small green dot beside the clock is not an item and stays either way. Measured with
     /// `Scripts/macos27/system-item-probe.swift` on macOS 27.0 (2026-09-29).
-    private static let systemItems = (0...63).map { NSNumber(value: $0) } as NSArray
+    private static let systemItems = (0...255).map { NSNumber(value: $0) } as NSArray
 
     private static let classes: (configuration: AnyClass, assertion: AnyClass)? = {
         guard
