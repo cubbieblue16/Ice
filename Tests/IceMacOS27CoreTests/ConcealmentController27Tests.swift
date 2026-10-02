@@ -15,6 +15,7 @@ final class FakeConcealmentBackend: ConcealmentBackend27 {
     var rejectNextActivation = false
     private(set) var liveTokens = [Token]()
     private(set) var activationCount = 0
+    private(set) var invalidationCount = 0
     /// What the bar conceals after every activation and invalidation.
     private(set) var history = [Set<String>]()
 
@@ -41,6 +42,7 @@ final class FakeConcealmentBackend: ConcealmentBackend27 {
     }
 
     func invalidate(_ token: ConcealmentToken27) {
+        invalidationCount += 1
         liveTokens.removeAll { $0 === token }
         history.append(concealed)
     }
@@ -124,5 +126,33 @@ struct ConcealmentController27Tests {
         controller.releaseAll()
         #expect(backend.concealed.isEmpty)
         #expect(!controller.isActive)
+    }
+
+    @Test("Forgetting drops live assertions without releasing them")
+    func forgetting() async throws {
+        let backend = FakeConcealmentBackend(universe: running)
+        let controller = ConcealmentController27(backend: backend)
+        try await controller.apply(target: allHidden, running: running)
+        controller.forgetAll()
+        #expect(!controller.isActive)
+        #expect(backend.invalidationCount == 0)
+        // The fake's holder is still alive, so its assertion stays live; in the app it is
+        // already gone with the item service's session.
+        #expect(backend.liveTokens.count == 1)
+    }
+
+    @Test("Only matching assertions are forgotten, and the next apply activates them again")
+    func forgettingSome() async throws {
+        let backend = FakeConcealmentBackend(universe: running)
+        let controller = ConcealmentController27(backend: backend)
+        try await controller.apply(target: allHidden, running: running)
+        let forgotten = controller.forget { _ in false }
+        #expect(forgotten == 0)
+        #expect(controller.isActive)
+        controller.forgetAll()
+        try await controller.apply(target: allHidden, running: running)
+        #expect(controller.isActive)
+        #expect(backend.activationCount == 2)
+        #expect(backend.invalidationCount == 0)
     }
 }

@@ -372,11 +372,13 @@ final class ControlItem {
             button.image = image
         case .hidden, .alwaysHidden:
             if #available(macOS 27.0, *) {
-                // Ice is signed locally, so MenuBarAgent drops its items whenever anything is
-                // concealed (measured on macOS 27.0). A divider is therefore never drawn, yet a
-                // standard-width status item still holds 18 points of the bar, which reads as a
-                // gap between the neighbouring icons. Sections come from the saved layout on 27,
-                // so the dividers only have to stay in the bar, not to take up room in it.
+                // Sections come from the saved layout on 27, not from where the dividers sit, so
+                // a divider only has to stay in the bar, not take up room in it: a standard-width
+                // status item holds 18 points, which reads as a gap between its neighbours.
+                // The Ice icon used to vanish whenever anything was concealed because MenuBarAgent
+                // drops the status items of whichever process holds the assessment-mode assertion,
+                // however that process is signed (measured on macOS 27.0, 2026-10-01). The item
+                // service now holds the assertions on Ice's behalf, so Ice's items stay hosted.
                 updateStatusItemVisibility(false)
                 button.appearsDisabled = true
                 button.isHighlighted = false

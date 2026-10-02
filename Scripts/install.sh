@@ -17,11 +17,11 @@ DEST="${DEST:-$HOME/Applications}"
 DERIVED="${DERIVED:-/tmp/ice-build}"
 
 # Signing. A "Developer ID Application" identity in the keychain is used when one exists (or
-# name one with SIGN_IDENTITY="Developer ID Application: Name (TEAM)"). It matters on macOS 27:
-# only a bundle signed with a real identity can hold the menu bar assessment assertion, so an
-# ad hoc build loses its own status item while concealing, and every ad hoc rebuild changes the
-# code hash, which makes TCC forget the Screen Recording grant. A Developer ID signature keeps a
-# stable designated requirement across rebuilds, so the grants survive.
+# name one with SIGN_IDENTITY="Developer ID Application: Name (TEAM)"). Signing does not decide
+# whether hiding works on macOS 27 (the MenuBarItemService helper holds the assertions, and a
+# holder's own items are dropped however it is signed). It decides whether TCC grants survive:
+# every ad hoc rebuild changes the code hash, which makes TCC forget the Screen Recording grant,
+# while a Developer ID signature keeps a stable designated requirement across rebuilds.
 #
 # Without such an identity the build falls back to ad hoc, with the hardened runtime off on
 # purpose: the hardened runtime then refuses to load Sparkle, which carries a team of its own

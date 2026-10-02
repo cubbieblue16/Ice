@@ -11,7 +11,9 @@ protocol ConcealmentToken27: AnyObject {}
 
 /// Activates and releases assessment-mode assertions.
 ///
-/// The app implements it with the private `MenuBarClientCore` API; tests use a fake.
+/// The app implements it by asking the `MenuBarItemService` XPC service, which holds the
+/// private `MenuBarClientCore` assertions: MenuBarAgent drops a holder's own items, so Ice
+/// must not hold them itself. Tests use a fake.
 @MainActor
 protocol ConcealmentBackend27: AnyObject {
     /// Activates an assertion that keeps only the given applications' items on the bar.
@@ -108,5 +110,29 @@ final class ConcealmentController27 {
             backend.invalidate(entry.token)
         }
         live.removeAll()
+    }
+
+    /// Drops the live entries whose assertions are already gone, without releasing them, and
+    /// returns how many were dropped.
+    ///
+    /// The assertions held for the app go away with whoever held them (in the app, the item
+    /// service's session), and releasing one that is gone would only send the holder an
+    /// identifier it no longer knows. The next `apply(target:running:)` activates whatever the
+    /// target still needs.
+    ///
+    /// Callers must not overlap this with `apply(target:running:)`, which would put the
+    /// dropped entries back when it finishes.
+    @discardableResult
+    func forget(where isGone: (ConcealmentToken27) -> Bool) -> Int {
+        let before = live.count
+        live.removeAll { isGone($0.token) }
+        let forgotten = before - live.count
+        logger.debug("Concealment forget: dropped \(forgotten, privacy: .public), \(self.live.count, privacy: .public) live")
+        return forgotten
+    }
+
+    /// Drops every live entry without releasing its assertion (see ``forget(where:)``).
+    func forgetAll() {
+        forget { _ in true }
     }
 }

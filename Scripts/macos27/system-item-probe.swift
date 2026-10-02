@@ -1,8 +1,9 @@
 // Holds an assessment-mode assertion with a chosen allowlist, so what MenuBarAgent keeps
 // on the bar can be read off it one item at a time.
 //
-// The assertion only bites from a signed application bundle, so this file is built into
-// one:
+// A bare signed binary can hold an assertion that bites, and MenuBarAgent drops the
+// holder's own status items while it is live (measured on macOS 27.0, 2026-10-01). The
+// probe has no status item of its own and is built into an application bundle all the same:
 //
 //   APP=/tmp/probe/Probe.app
 //   mkdir -p "$APP/Contents/MacOS"

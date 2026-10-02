@@ -44,8 +44,8 @@ struct MenuBarLayoutSettingsPane: View {
                 }
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
-                if #available(macOS 27.0, *), !MenuBarAssessmentAssertion27.isAvailable {
-                    Text("Ice cannot hide items on this version of macOS: the system interface it relies on is missing.")
+                if #available(macOS 27.0, *), !ServiceConcealmentBackend27.isAvailable {
+                    Text("Ice cannot hide items: the helper service it relies on is missing from the app.")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)

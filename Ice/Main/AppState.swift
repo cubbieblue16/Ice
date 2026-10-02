@@ -92,9 +92,11 @@ final class AppState: ObservableObject {
 
         if #available(macOS 27.0, *) {
             // macOS 27 has no item windows: bounds come from Accessibility, and the
-            // owning process is known directly, without the item service.
+            // owning process is known directly, without the item service. Concealment
+            // does need the service, which holds the assertions on Ice's behalf.
             Bridging.syntheticWindowBoundsProvider = MenuBarItemProvider27.currentBounds(for:)
-        } else if #available(macOS 26.0, *) {
+        }
+        if #available(macOS 26.0, *) {
             await MenuBarItemService.Connection.shared.start()
         }
 

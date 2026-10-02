@@ -62,9 +62,9 @@ jobs:
       # -------------------------------------------------------------------------------------------
       # TODO(Developer ID): sign with Developer ID and notarize. Nothing in this block runs.
       #
-      # There is no "Developer ID Application" certificate yet, so releases are ad hoc signed:
-      # Gatekeeper blocks their first launch, and Ice's own icon disappears while items are
-      # concealed. The workflow succeeds without the certificate. Once it exists:
+      # Releases built here are ad hoc signed, so Gatekeeper blocks their first launch. (Hiding
+      # does not depend on signing: the MenuBarItemService helper holds the macOS 27 assertions.)
+      # The workflow succeeds without a certificate. To sign and notarize:
       #   1. Add repository secrets: DEVELOPER_ID_P12 (the exported certificate, base64),
       #      DEVELOPER_ID_P12_PASSWORD, and an App Store Connect API key for notarytool:
       #      NOTARY_KEY (the .p8, base64), NOTARY_KEY_ID and NOTARY_ISSUER_ID.

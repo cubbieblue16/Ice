@@ -12,17 +12,23 @@ import OSLog
 /// On macOS 27 the section of each application comes from a saved layout, first
 /// taken from the user's Ice layout: MenuBarAgent reorders items on its own, so their
 /// order on the bar no longer says which section they belong to. The concealer hides
-/// applications through `MenuBarAssessmentAssertion27`, following that layout and the
+/// applications through assessment-mode assertions that the `MenuBarItemService` XPC
+/// service holds for it (`ServiceConcealmentBackend27`), following that layout and the
 /// state of Ice's sections.
 @available(macOS 27.0, *)
 @MainActor
 final class Concealer27: ObservableObject {
-    private let controller = ConcealmentController27(backend: MenuBarAssessmentAssertion27())
+    private let backend: ServiceConcealmentBackend27
+    private let controller: ConcealmentController27
     private let logger = Logger(category: "Concealer27")
     private weak var appState: AppState?
     private var observers = [NSObjectProtocol]()
     private var applyTask: Task<Void, Never>?
     private var suspendedUntil: ContinuousClock.Instant?
+
+    /// Puts concealment back after the item service lost the assertions it held
+    /// (see ``recoverFromLostService(cancelledSession:)``).
+    private var recoveryTask: Task<Void, Never>?
 
     /// When concealment last changed, which is when the bar last started moving.
     private var lastChangeAt = ContinuousClock.now
@@ -43,6 +49,10 @@ final class Concealer27: ObservableObject {
     /// slow or stuck costs only this, and then the items are hidden anyway.
     private static let captureBeforeConcealmentTimeout = Duration.milliseconds(1500)
 
+    /// How long a release waits for the item service to answer before a click replayed
+    /// behind it goes ahead anyway (see ``suspendReleased(for:)``).
+    private static let releaseAnswerTimeout = Duration.milliseconds(250)
+
     /// Applications shown for a moment, with the number of callers showing each.
     private var temporarilyShown = [String: Int]()
     private var cancellables = Set<AnyCancellable>()
@@ -59,11 +69,25 @@ final class Concealer27: ObservableObject {
         return stored.compactMapValues(MacOS27Section.init(rawValue:))
     }
 
+    init() {
+        let backend = ServiceConcealmentBackend27()
+        self.backend = backend
+        self.controller = ConcealmentController27(backend: backend)
+    }
+
     func performSetup(with appState: AppState) {
         self.appState = appState
-        guard MenuBarAssessmentAssertion27.isAvailable else {
-            logger.error("MenuBarClientCore assertions are unavailable, so items will not be hidden")
+        guard ServiceConcealmentBackend27.isAvailable else {
+            logger.error("The item service is missing from the app, so items will not be hidden")
             return
+        }
+        // The item service holds the assertions, and they go away with it when it exits or
+        // crashes, which shows every item again. Its session is cancelled then, and the
+        // concealment is applied again through a new one.
+        recoveryTask = Task { [weak self, backend] in
+            for await session in backend.serviceSessionCancellations {
+                self?.recoverFromLostService(cancelledSession: session)
+            }
         }
         // Every assertion is an allowlist of the applications running when it was made, so an
         // application missing from it has its items hidden. The workspace's launch notification
@@ -88,6 +112,8 @@ final class Concealer27: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
+                // Not waited for: the item service also releases whatever the app's session
+                // still holds when that session ends with the app.
                 self?.controller.releaseAll()
             }
         })
@@ -122,7 +148,7 @@ final class Concealer27: ObservableObject {
 
     /// Derives what to conceal from Ice's sections and applies it.
     func update() {
-        guard let appState, MenuBarAssessmentAssertion27.isAvailable else {
+        guard let appState, ServiceConcealmentBackend27.isAvailable else {
             return
         }
         if let suspendedUntil, ContinuousClock.now < suspendedUntil {
@@ -301,22 +327,45 @@ final class Concealer27: ObservableObject {
     /// Releasing goes through MenuBarAgent and queues behind whatever concealment change came
     /// before it. A click replayed on a timer could therefore arrive while the assertion was
     /// still live, and MenuBarAgent ignores those — which is why a click on the clock sometimes
-    /// did nothing and worked on the second try.
+    /// did nothing and worked on the second try. The item service releases the assertions, so
+    /// they are gone once it has answered, or this gives up waiting after
+    /// ``releaseAnswerTimeout``.
     func suspendReleased(for duration: Duration) async {
         lastChangeAt = .now
         suspendedUntil = .now + duration
         isConcealing = false
         concealedPIDs.removeAll()
         let previous = applyTask
-        let release = Task { [controller] in
+        let release = Task { [controller, backend] in
             await previous?.value
             controller.releaseAll()
+            await backend.invalidationsAnswered(within: Self.releaseAnswerTimeout)
         }
         applyTask = release
         await release.value
         Task { [weak self] in
             try? await Task.sleep(for: duration)
             self?.suspendedUntil = nil
+            self?.update()
+        }
+    }
+
+    /// Forgets the assertions the item service held for a cancelled session, and applies the
+    /// concealment again through a new session.
+    ///
+    /// Those assertions went away with the session, so they are not released. This queues
+    /// behind the change in progress, which may still record an assertion from that session.
+    /// Nothing is applied again when nothing was lost, so a service that fails on every
+    /// activation is not asked again and again.
+    private func recoverFromLostService(cancelledSession: UInt64) {
+        let previous = applyTask
+        applyTask = Task { [weak self, controller, backend, logger] in
+            await previous?.value
+            let forgotten = controller.forget { backend.isLost($0, cancelledSession: cancelledSession) }
+            guard forgotten > 0 else {
+                return
+            }
+            logger.notice("The item service lost \(forgotten, privacy: .public) assertions, so concealment is applied again")
             self?.update()
         }
     }

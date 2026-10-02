@@ -21,7 +21,7 @@ The way it hides items comes from [Thaw](https://github.com/thaw-app/Thaw), by w
 
 On earlier versions of macOS the fork behaves like upstream, apart from the Liquid Glass Ice Bar on macOS 26, which can be turned off. It builds for Apple Silicon only.
 
-**Limitation of ad hoc builds.** The fork has no Developer ID certificate yet, so every build is ad hoc signed. On these builds, Ice's own menu bar icon disappears while items are concealed. Set a hotkey in Settings › Hotkeys to reach the hidden items meanwhile.
+**Signing.** `Scripts/install.sh` signs with a Developer ID Application identity when the keychain holds one, and ad hoc otherwise. Signing does not affect hiding: on macOS 27 the assertions that hide items are held by Ice's `MenuBarItemService` helper, not by Ice itself, because MenuBarAgent drops the status items of whichever process holds one. Ad hoc builds change their code hash on every rebuild, so macOS forgets their Screen Recording grant each time.
 
 **Install.** With Xcode 27 installed, run [`Scripts/install.sh`](Scripts/install.sh). It builds Ice and installs it to `~/Applications`. The zips on this fork's [releases](https://github.com/cubbieblue16/Ice/releases) are the same ad hoc build and are not notarized, so macOS blocks their first launch. To allow it, go to System Settings › Privacy & Security. [`Scripts/README.md`](Scripts/README.md) covers releases and update signing.
 
