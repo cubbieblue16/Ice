@@ -7,7 +7,7 @@
 //   APP=/tmp/probe/Probe.app
 //   mkdir -p "$APP/Contents/MacOS"
 //   /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string Probe" \
-//       -c "Add :CFBundleIdentifier string com.jordanbaird.Ice.SystemItemProbe" \
+//       -c "Add :CFBundleIdentifier string tech.kuta.Ice27.SystemItemProbe" \
 //       -c "Add :CFBundlePackageType string APPL" -c "Add :LSUIElement bool true" \
 //       "$APP/Contents/Info.plist"
 //   swiftc -O Scripts/macos27/system-item-probe.swift -o "$APP/Contents/MacOS/Probe"

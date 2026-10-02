@@ -18,7 +18,7 @@ if arguments[1] == "snapshot" {
         }
         let owner = window[kCGWindowOwnerName as String] as? String ?? "?"
         let bounds = window[kCGWindowBounds as String] as? [String: CGFloat] ?? [:]
-        guard owner != "Ice", (bounds["Height"] ?? 0) > 40 else {
+        guard owner != "Ice 27.0", (bounds["Height"] ?? 0) > 40 else {
             continue
         }
         let centerX = (bounds["X"] ?? 0) + (bounds["Width"] ?? 0) / 2

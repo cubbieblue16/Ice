@@ -34,7 +34,7 @@ Mike runs this once, on his own Mac. It is never run in CI or by an agent.
    /tmp/ice-build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys -x sparkle-private-key.txt
    ```
 
-4. Commit, then tag the release (`git tag v…` and push the tag). With the secret set, the workflow signs `Ice.zip` and attaches `appcast.xml` to the release.
+4. Commit, then tag the release (`git tag v…` and push the tag). With the secret set, the workflow signs `Ice-27.0.zip` and attaches `appcast.xml` to the release.
 
 You need both halves:
 

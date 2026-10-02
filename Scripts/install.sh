@@ -48,7 +48,7 @@ xcodebuild -project "$ROOT/Ice.xcodeproj" -scheme Ice -configuration Release \
     ARCHS=arm64 "${SIGN_ARGS[@]}" \
     | tail -3
 
-APP="$DERIVED/Build/Products/Release/Ice.app"
+APP="$DERIVED/Build/Products/Release/Ice 27.0.app"
 [ -d "$APP" ] || { echo "error: no product at $APP" >&2; exit 1; }
 
 echo "==> Verifying the signature before installing"
@@ -57,22 +57,22 @@ codesign --verify --deep --strict "$APP"
 codesign -dv "$APP" 2>&1 | grep -E 'Identifier=|TeamIdentifier=|^Authority=' | sed 's/^/    /'
 
 echo "==> Installing to $DEST"
-if pgrep -x Ice >/dev/null 2>&1; then
-    osascript -e 'quit app "Ice"' >/dev/null 2>&1 || true
+if pgrep -x "Ice 27.0" >/dev/null 2>&1; then
+    osascript -e 'tell application id "tech.kuta.Ice27" to quit' >/dev/null 2>&1 || true
     for _ in 1 2 3 4 5 6 7 8 9 10; do
-        pgrep -x Ice >/dev/null 2>&1 || break
+        pgrep -x "Ice 27.0" >/dev/null 2>&1 || break
         sleep 0.3
     done
-    pgrep -x Ice >/dev/null 2>&1 && pkill -x Ice || true
+    pgrep -x "Ice 27.0" >/dev/null 2>&1 && pkill -x "Ice 27.0" || true
 fi
 
 mkdir -p "$DEST"
-rm -rf "${DEST:?}/Ice.app"
+rm -rf "${DEST:?}/Ice 27.0.app"
 # ditto, not cp: it preserves the code signature.
-ditto "$APP" "$DEST/Ice.app"
+ditto "$APP" "$DEST/Ice 27.0.app"
 
 echo "==> Verifying the installed copy"
-codesign --verify --deep --strict "$DEST/Ice.app"
+codesign --verify --deep --strict "$DEST/Ice 27.0.app"
 
-open -a "$DEST/Ice.app"
-echo "==> Running from $DEST/Ice.app"
+open -a "$DEST/Ice 27.0.app"
+echo "==> Running from $DEST/Ice 27.0.app"

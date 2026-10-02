@@ -53,10 +53,10 @@ jobs:
 
       - name: Verify the app
         run: |
-          APP=build/Build/Products/Release/Ice.app
+          APP="build/Build/Products/Release/Ice 27.0.app"
           codesign --verify --deep --strict "$APP"
           codesign -dv "$APP" 2>&1 | grep -E '^(Identifier|Signature|TeamIdentifier)='
-          lipo -archs "$APP/Contents/MacOS/Ice"
+          lipo -archs "$APP/Contents/MacOS/Ice 27.0"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist"
 
       # -------------------------------------------------------------------------------------------
@@ -81,17 +81,17 @@ jobs:
       #      Notarization requires the hardened runtime, and with one team throughout Sparkle loads.
       #   4. After "Verify the app", notarize and staple, so the zip below holds the stapled app:
       #        echo "$NOTARY_KEY" | base64 --decode > AuthKey.p8
-      #        ditto -c -k --keepParent build/Build/Products/Release/Ice.app notarize.zip
+      #        ditto -c -k --keepParent "build/Build/Products/Release/Ice 27.0.app" notarize.zip
       #        xcrun notarytool submit notarize.zip --key AuthKey.p8 --key-id "$NOTARY_KEY_ID" \
       #          --issuer "$NOTARY_ISSUER_ID" --wait
-      #        xcrun stapler staple build/Build/Products/Release/Ice.app
+      #        xcrun stapler staple "build/Build/Products/Release/Ice 27.0.app"
       #   5. Update the signing notes in Scripts/install.sh, Scripts/README.md and README.md.
       # -------------------------------------------------------------------------------------------
 
       - name: Zip
         run: |
           mkdir dist
-          ditto -c -k --keepParent build/Build/Products/Release/Ice.app dist/Ice.zip
+          ditto -c -k --keepParent "build/Build/Products/Release/Ice 27.0.app" dist/Ice-27.0.zip
 
       - name: Generate the Sparkle appcast
         if: env.HAS_SPARKLE_KEY == 'true'
@@ -102,7 +102,7 @@ jobs:
           # only when the app's SUPublicEDKey matches this private key; otherwise it writes an
           # appcast that every copy of Ice rejects, so an unsigned result stops the release.
           mkdir appcast
-          cp dist/Ice.zip appcast/
+          cp dist/Ice-27.0.zip appcast/
           printf '%s' "$SPARKLE_PRIVATE_KEY" | build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast \
             --ed-key-file - \
             --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
