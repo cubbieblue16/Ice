@@ -2,7 +2,7 @@
 
 | Path | Purpose |
 | --- | --- |
-| `install.sh` | Builds Ice (Release, ad hoc signed, hardened runtime off), checks the signature and installs it to `~/Applications`. `DEST=/Applications` installs it for all users. |
+| `install.sh` | Builds Ice (Release, ad hoc signed, hardened runtime off), checks the signature and installs it to `/Applications`, the only location where macOS 27 can identify Ice's menu bar items. |
 | `check-panels.swift` | Counts Ice's live windows by kind, to catch leaked overlay panels. Run with `swift check-panels.swift`. |
 | `macos27/` | Checks for the macOS 27 code: each `verify-*.sh` drives an installed Ice and states its requirements at the top. The Swift files are the probes those scripts call. |
 

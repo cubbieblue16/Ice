@@ -7,19 +7,20 @@
 # an unsigned bundle. macOS then refuses to launch it — "Launchd job spawn
 # failed" — and the freshly built app appears simply broken.
 #
-# Installs to ~/Applications by default, which needs no administrator rights.
-# Set DEST=/Applications to install system-wide; that path needs a password.
+# Installs to /Applications by default, which needs write access to it (an administrator account
+# usually has it). macOS 27 resolves a menu bar item's application only under /Applications, so
+# ~/Applications is not supported there; setting DEST elsewhere is at your own risk.
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="${DEST:-$HOME/Applications}"
+DEST="${DEST:-/Applications}"
 DERIVED="${DERIVED:-/tmp/ice-build}"
 
 # Signing. A "Developer ID Application" identity in the keychain is used when one exists (or
 # name one with SIGN_IDENTITY="Developer ID Application: Name (TEAM)"). Signing does not decide
 # whether hiding works on macOS 27 (the MenuBarItemService helper holds the assertions, and a
-# holder's own items are dropped however it is signed). It decides whether TCC grants survive:
+# holder's own items are not dropped, whoever signs it). It decides whether TCC grants survive:
 # every ad hoc rebuild changes the code hash, which makes TCC forget the Screen Recording grant,
 # while a Developer ID signature keeps a stable designated requirement across rebuilds.
 #

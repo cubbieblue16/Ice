@@ -375,10 +375,16 @@ final class ControlItem {
                 // Sections come from the saved layout on 27, not from where the dividers sit, so
                 // a divider only has to stay in the bar, not take up room in it: a standard-width
                 // status item holds 18 points, which reads as a gap between its neighbours.
-                // The Ice icon used to vanish whenever anything was concealed because MenuBarAgent
-                // drops the status items of whichever process holds the assessment-mode assertion,
-                // however that process is signed (measured on macOS 27.0, 2026-10-01). The item
-                // service now holds the assertions on Ice's behalf, so Ice's items stay hosted.
+                // The Ice icon used to vanish because its stored position was 0, which MenuBarAgent
+                // reads as "unset" and places leftmost, inside the system overflow group (see
+                // ``ControlItemPlacement``); it is seeded at 1 on 27.
+                //
+                // The hidden divider is deliberately kept hosted rather than removed with
+                // `statusItem.isVisible = false`: `MenuBarSection.isEnabled` is
+                // `controlItem.isAddedToMenuBar`, which gates showing and toggling the section,
+                // and `Concealer27.seedLayoutIfNeeded` reads the divider's Accessibility frame to
+                // seed the layout. At length 0 the agent still hosts it about 2 points wide. The
+                // always-hidden divider is removed only when its section is disabled.
                 updateStatusItemVisibility(false)
                 button.appearsDisabled = true
                 button.isHighlighted = false
@@ -655,6 +661,31 @@ enum ControlItemDefaults {
         Self[key, oldAutosaveName] = nil
     }
 
+    /// Moves positions stored by an earlier Ice 27.0 build out of the value macOS 27 reads as
+    /// "unset", once (see ``ControlItemPlacement``).
+    ///
+    /// Call this before any control item is created. A position the user has dragged to some
+    /// other value is left alone.
+    @available(macOS 27.0, *)
+    static func moveControlItemsOutOfOverflowIfNeeded() {
+        guard !Defaults.bool(forKey: .ice27DidMoveControlItemsOutOfOverflow) else {
+            return
+        }
+        let visibleName = ControlItem.Identifier.visible.rawValue
+        let hiddenName = ControlItem.Identifier.hidden.rawValue
+        let migrated = ControlItemPlacement.migratedPositions(
+            visible: Self[.preferredPosition, visibleName],
+            hidden: Self[.preferredPosition, hiddenName]
+        )
+        if let visible = migrated.visible, visible != Self[.preferredPosition, visibleName] {
+            Self[.preferredPosition, visibleName] = visible
+        }
+        if let hidden = migrated.hidden, hidden != Self[.preferredPosition, hiddenName] {
+            Self[.preferredPosition, hiddenName] = hidden
+        }
+        Defaults.set(true, forKey: .ice27DidMoveControlItemsOutOfOverflow)
+    }
+
     /// Performs some initial required setup work before the
     /// creation of a control item.
     fileprivate static func preflightSetup(for controlItem: ControlItem) {
@@ -662,14 +693,24 @@ enum ControlItemDefaults {
 
         // Visible and hidden control items should be added before
         // existing items in the status bar.
+        //
+        // On macOS 27 a stored position of exactly 0 means "unset" to MenuBarAgent, which then
+        // places the item in the leftmost trailing slot, inside the system overflow group on a
+        // bar without room for every item (measured 2026-10-02). The seeds are 1 and 2 there.
         if ControlItemDefaults[.preferredPosition, autosaveName] == nil {
-            switch controlItem.identifier {
-            case .visible:
-                ControlItemDefaults[.preferredPosition, autosaveName] = 0
-            case .hidden:
-                ControlItemDefaults[.preferredPosition, autosaveName] = 1
-            case .alwaysHidden:
-                break
+            let slot: ControlItemPlacement.Slot = switch controlItem.identifier {
+            case .visible: .visible
+            case .hidden: .hidden
+            case .alwaysHidden: .alwaysHidden
+            }
+            let isMacOS27: Bool
+            if #available(macOS 27.0, *) {
+                isMacOS27 = true
+            } else {
+                isMacOS27 = false
+            }
+            if let position = ControlItemPlacement.defaultPreferredPosition(for: slot, isMacOS27: isMacOS27) {
+                ControlItemDefaults[.preferredPosition, autosaveName] = position
             }
         }
 

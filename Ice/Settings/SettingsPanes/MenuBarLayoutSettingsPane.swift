@@ -22,6 +22,7 @@ struct MenuBarLayoutSettingsPane: View {
             IceForm(spacing: 20) {
                 header
                 if #available(macOS 27.0, *) {
+                    InstallLocationWarning()
                     StuckOverflowWarning(concealer: appState.concealer27)
                 }
                 layoutBars
@@ -119,6 +120,23 @@ struct MenuBarLayoutSettingsPane: View {
                     .padding(.leading, 8)
 
                 LayoutBar(imageCache: appState.imageCache, section: name)
+            }
+        }
+    }
+}
+
+/// Tells the user when Ice is not in `/Applications`, where macOS 27 cannot identify its items.
+@available(macOS 27.0, *)
+private struct InstallLocationWarning: View {
+    var body: some View {
+        if !InstallLocation27.isSupported(bundlePath: Bundle.main.bundleURL.path) {
+            IceSection {
+                Text("Ice 27.0 must be installed in /Applications for macOS 27 to identify its menu bar items. Move it there and relaunch.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(15)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

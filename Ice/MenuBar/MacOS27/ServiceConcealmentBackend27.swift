@@ -9,10 +9,9 @@ import OSLog
 /// Activates and releases assessment-mode assertions through the `MenuBarItemService` XPC
 /// service, which holds them on Ice's behalf.
 ///
-/// MenuBarAgent removes the items of whichever process holds an assertion, even when that
-/// process is in the allowlist (measured on macOS 27.0, 2026-10-01; signing makes no
-/// difference). Held by Ice itself, they took Ice's own icon off the bar whenever anything
-/// was concealed, so they are held by the service instead (`AssessmentAssertionHolder`).
+/// The service holds the assertions on Ice's behalf (`AssessmentAssertionHolder`). Measured on
+/// macOS 27.0 (2026-10-02), a holder's own items are NOT dropped, so this is a structural
+/// choice (assertions outlive Ice's main-thread stalls), not a requirement.
 @available(macOS 27.0, *)
 @MainActor
 final class ServiceConcealmentBackend27: ConcealmentBackend27 {

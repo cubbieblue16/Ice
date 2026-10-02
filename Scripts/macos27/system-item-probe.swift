@@ -1,9 +1,11 @@
 // Holds an assessment-mode assertion with a chosen allowlist, so what MenuBarAgent keeps
 // on the bar can be read off it one item at a time.
 //
-// A bare signed binary can hold an assertion that bites, and MenuBarAgent drops the
-// holder's own status items while it is live (measured on macOS 27.0, 2026-10-01). The
-// probe has no status item of its own and is built into an application bundle all the same:
+// A bare signed binary can hold an assertion that bites. A holder's own status items are
+// NOT dropped while it is live (measured on macOS 27.0, 2026-10-02; an earlier note here said
+// otherwise, and the icon vanished for a different reason: a stored position of 0 reads as
+// "unset" and is placed leftmost, inside the overflow group). The probe has no status item
+// of its own and is built into an application bundle all the same:
 //
 //   APP=/tmp/probe/Probe.app
 //   mkdir -p "$APP/Contents/MacOS"

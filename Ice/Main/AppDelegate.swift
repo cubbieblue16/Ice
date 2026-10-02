@@ -16,6 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Must run before anything reads the app's settings, which the
         // app state's managers do as soon as they are created.
         LegacyDefaultsImport.importIfNeeded()
+        if #available(macOS 27.0, *) {
+            // Control items are created by the app state's managers, so this runs first.
+            ControlItemDefaults.moveControlItemsOutOfOverflowIfNeeded()
+        }
         appState = AppState()
         super.init()
     }
@@ -34,6 +38,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if #available(macOS 27.0, *), !InstallLocation27.isSupported(bundlePath: Bundle.main.bundleURL.path) {
+            Logger(category: "AppDelegate").error("Ice is installed outside /Applications (\(Bundle.main.bundleURL.path, privacy: .public)), so macOS 27 cannot identify its menu bar items")
+        }
+
         // Hide the main menu's items to add additional space to the
         // menu bar when we are the focused app.
         for item in NSApp.mainMenu?.items ?? [] {

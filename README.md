@@ -21,9 +21,14 @@ The way it hides items comes from [Thaw](https://github.com/thaw-app/Thaw), by w
 
 On earlier versions of macOS the fork behaves like upstream, apart from the Liquid Glass Ice Bar on macOS 26, which can be turned off. It builds for Apple Silicon only.
 
-**Signing.** `Scripts/install.sh` signs with a Developer ID Application identity when the keychain holds one, and ad hoc otherwise. Signing does not affect hiding: on macOS 27 the assertions that hide items are held by Ice's `MenuBarItemService` helper, not by Ice itself, because MenuBarAgent drops the status items of whichever process holds one. Ad hoc builds change their code hash on every rebuild, so macOS forgets their Screen Recording grant each time.
+**Signing.** `Scripts/install.sh` signs with a Developer ID Application identity when the keychain holds one, and ad hoc otherwise. Signing does not affect hiding: on macOS 27 the assertions that hide items are held by Ice's `MenuBarItemService` helper on Ice's behalf, so they outlive stalls of Ice's main thread (a holder's own items are not dropped, measured 2026-10-02). Ad hoc builds change their code hash on every rebuild, so macOS forgets their Screen Recording grant each time.
 
-**Install.** With Xcode 27 installed, run [`Scripts/install.sh`](Scripts/install.sh). It builds Ice and installs it to `~/Applications`. The zips on this fork's [releases](https://github.com/cubbieblue16/Ice/releases) are the same ad hoc build and are not notarized, so macOS blocks their first launch. To allow it, go to System Settings › Privacy & Security. [`Scripts/README.md`](Scripts/README.md) covers releases and update signing.
+**Install.** With Xcode 27 installed, run [`Scripts/install.sh`](Scripts/install.sh). It builds Ice and installs it to `/Applications`. The zips on this fork's [releases](https://github.com/cubbieblue16/Ice/releases) are the same ad hoc build and are not notarized, so macOS blocks their first launch. To allow it, go to System Settings › Privacy & Security. [`Scripts/README.md`](Scripts/README.md) covers releases and update signing.
+
+**macOS 27.**
+- Ice must be in `/Applications`. MenuBarAgent resolves an item's application only there, so Ice cannot address its own items from `~/Applications`, and Menu Bar Layout shows a warning when it is elsewhere.
+- Upgrading from an earlier Ice 27.0 build needs one restart of MenuBarAgent to move the Ice icon out of the overflow group: run `killall MenuBarAgent` in Terminal, or log out and back in. A first install does not need it. The cause: macOS 27 reads a stored status item position of 0 as "unset" and places the item leftmost, which on a crowded bar is inside the overflow group; Ice now stores 1 (icon) and 2 (divider), and moves old values of 0 and 1 to those once.
+- The `«` chevron is macOS's own overflow control for items that do not fit beside the notch. It is not Ice.
 
 The fork is licensed under the GPL-3.0, like Ice (see [License](#license)).
 

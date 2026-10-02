@@ -172,6 +172,7 @@ extension Defaults {
         case macOS27LayoutSeeded = "MacOS27LayoutSeeded"
         case macOS27ClickRestoreDelay = "MacOS27ClickRestoreDelay"
         case macOS27IceBarWaitsForRefresh = "MacOS27IceBarWaitsForRefresh"
+        case ice27DidMoveControlItemsOutOfOverflow = "Ice27DidMoveControlItemsOutOfOverflow"
 
         // MARK: Migration
         case hasMigrated0_8_0 = "hasMigrated0_8_0"

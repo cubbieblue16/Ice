@@ -12,8 +12,9 @@ protocol ConcealmentToken27: AnyObject {}
 /// Activates and releases assessment-mode assertions.
 ///
 /// The app implements it by asking the `MenuBarItemService` XPC service, which holds the
-/// private `MenuBarClientCore` assertions: MenuBarAgent drops a holder's own items, so Ice
-/// must not hold them itself. Tests use a fake.
+/// private `MenuBarClientCore` assertions on Ice's behalf. Measured on macOS 27.0 (2026-10-02),
+/// a holder's own items are NOT dropped, so this is a structural choice (assertions outlive
+/// Ice's main-thread stalls), not a requirement. Tests use a fake.
 @MainActor
 protocol ConcealmentBackend27: AnyObject {
     /// Activates an assertion that keeps only the given applications' items on the bar.
