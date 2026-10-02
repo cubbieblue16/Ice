@@ -16,10 +16,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Must run before anything reads the app's settings, which the
         // app state's managers do as soon as they are created.
         LegacyDefaultsImport.importIfNeeded()
-        if #available(macOS 27.0, *) {
-            // Control items are created by the app state's managers, so this runs first.
-            ControlItemDefaults.moveControlItemsOutOfOverflowIfNeeded()
-        }
         appState = AppState()
         super.init()
     }

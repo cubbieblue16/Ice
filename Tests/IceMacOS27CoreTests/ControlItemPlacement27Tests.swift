@@ -18,21 +18,24 @@ struct ControlItemPlacementTests {
         #expect(ControlItemPlacement.defaultPreferredPosition(for: .alwaysHidden, isMacOS27: false) == nil)
     }
 
-    @Test("Positions from an earlier Ice 27.0 build move off 0 and 1")
-    func migratesOldPositions() {
-        let moved = ControlItemPlacement.migratedPositions(visible: 0, hidden: 1)
-        #expect(moved.visible == 1)
-        #expect(moved.hidden == 2)
+    @Test("Before macOS 27 the autosave name is unchanged")
+    func earlierAutosaveName() {
+        #expect(ControlItemPlacement.autosaveName(for: "Ice.ControlItem.Visible", generation: 7, isMacOS27: false)
+            == "Ice.ControlItem.Visible")
     }
 
-    @Test("Positions the user dragged, and missing ones, are left alone")
-    func keepsOtherPositions() {
-        let dragged = ControlItemPlacement.migratedPositions(visible: 400, hidden: 7)
-        #expect(dragged.visible == 400)
-        #expect(dragged.hidden == 7)
-        let none = ControlItemPlacement.migratedPositions(visible: nil, hidden: nil)
-        #expect(none.visible == nil)
-        #expect(none.hidden == nil)
+    @Test("On macOS 27 generation 0 and 1 both give .g1")
+    func firstGenerationAutosaveName() {
+        #expect(ControlItemPlacement.autosaveName(for: "Ice.ControlItem.Visible", generation: 0, isMacOS27: true)
+            == "Ice.ControlItem.Visible.g1")
+        #expect(ControlItemPlacement.autosaveName(for: "Ice.ControlItem.Visible", generation: 1, isMacOS27: true)
+            == "Ice.ControlItem.Visible.g1")
+    }
+
+    @Test("On macOS 27 a later generation is suffixed as given")
+    func laterGenerationAutosaveName() {
+        #expect(ControlItemPlacement.autosaveName(for: "Ice.ControlItem.Hidden", generation: 7, isMacOS27: true)
+            == "Ice.ControlItem.Hidden.g7")
     }
 
     @Test("Only /Applications is a supported install location")

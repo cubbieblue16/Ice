@@ -9,6 +9,7 @@ struct AdvancedSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject var settings: AdvancedSettings
     @State private var maxSliderLabelWidth: CGFloat = 0
+    @State private var isResetMenuBarItemsPromptPresented = false
 
     private var menuBarManager: MenuBarManager {
         appState.menuBarManager
@@ -43,6 +44,11 @@ struct AdvancedSettingsPane: View {
                 showOnHoverDelay
                 if #unavailable(macOS 27.0) {
                     tempShowInterval
+                }
+            }
+            if #available(macOS 27.0, *) {
+                IceSection("Menu bar items") {
+                    resetMenuBarItems
                 }
             }
             IceSection("Permissions") {
@@ -148,6 +154,31 @@ struct AdvancedSettingsPane: View {
                 }
         }
         .annotation("The amount of time to wait before hiding temporarily shown menu bar items.")
+    }
+
+    @available(macOS 27.0, *)
+    @ViewBuilder
+    private var resetMenuBarItems: some View {
+        Button("Reset Ice’s Menu Bar Items…") {
+            isResetMenuBarItemsPromptPresented = true
+        }
+        .alert("Reset Ice’s Menu Bar Items", isPresented: $isResetMenuBarItemsPromptPresented) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset and Relaunch", role: .destructive) {
+                ControlItemDefaults.startNewGeneration()
+                AppRelaunch.relaunch()
+            }
+        } message: {
+            Text("Ice will relaunch, and macOS will place its menu bar items again.")
+        }
+        .annotation(
+            """
+            macOS 27 remembers where Ice’s items were first placed. If the Ice icon is stuck \
+            inside the « overflow group or in the wrong spot, this gives the items a fresh \
+            identity so macOS places them again, then relaunches Ice.
+            """
+        )
+        .padding(.trailing, 75)
     }
 
     @ViewBuilder

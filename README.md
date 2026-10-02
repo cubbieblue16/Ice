@@ -27,7 +27,7 @@ On earlier versions of macOS the fork behaves like upstream, apart from the Liqu
 
 **macOS 27.**
 - Ice must be in `/Applications`. MenuBarAgent resolves an item's application only there, so Ice cannot address its own items from `~/Applications`, and Menu Bar Layout shows a warning when it is elsewhere.
-- Upgrading from an earlier Ice 27.0 build needs one restart of MenuBarAgent to move the Ice icon out of the overflow group: run `killall MenuBarAgent` in Terminal, or log out and back in. A first install does not need it. The cause: macOS 27 reads a stored status item position of 0 as "unset" and places the item leftmost, which on a crowded bar is inside the overflow group; Ice now stores 1 (icon) and 2 (divider), and moves old values of 0 and 1 to those once.
+- macOS 27 remembers the first placement of each status item. Ice gives its items a fresh identity when needed, and the "Reset Ice’s Menu Bar Items" button in Advanced settings does that on demand, then relaunches Ice. This is the fix when the Ice icon sits inside the `«` overflow group or in the wrong spot.
 - The `«` chevron is macOS's own overflow control for items that do not fit beside the notch. It is not Ice.
 
 The fork is licensed under the GPL-3.0, like Ice (see [License](#license)).

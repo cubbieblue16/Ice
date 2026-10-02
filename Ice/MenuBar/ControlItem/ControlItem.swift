@@ -71,7 +71,7 @@ final class ControlItem {
             ControlItemDefaults.preflightSetup(for: controlItem)
 
             self.statusItem = NSStatusBar.system.statusItem(withLength: 0)
-            self.statusItem.autosaveName = controlItem.identifier.rawValue
+            self.statusItem.autosaveName = controlItem.autosaveName
 
             if let button = statusItem.button {
                 // This could break in a new macOS release, but we need this constraint in order to
@@ -134,6 +134,27 @@ final class ControlItem {
 
     /// The control item's identifier.
     let identifier: Identifier
+
+    /// The autosave name of the control item's status item.
+    ///
+    /// Before macOS 27 this is the identifier's raw value. On macOS 27 it carries a generation
+    /// suffix, so the status item can be given a fresh identity (see ``ControlItemPlacement``).
+    var autosaveName: String {
+        let generation: Int
+        let isMacOS27: Bool
+        if #available(macOS 27.0, *) {
+            generation = Defaults.integer(forKey: .ice27ControlItemGeneration)
+            isMacOS27 = true
+        } else {
+            generation = 0
+            isMacOS27 = false
+        }
+        return ControlItemPlacement.autosaveName(
+            for: identifier.rawValue,
+            generation: generation,
+            isMacOS27: isMacOS27
+        )
+    }
 
     /// Lazy storage for the control item's underlying status item.
     private lazy var storage = StatusItemStorage(controlItem: self)
@@ -661,42 +682,38 @@ enum ControlItemDefaults {
         Self[key, oldAutosaveName] = nil
     }
 
-    /// Moves positions stored by an earlier Ice 27.0 build out of the value macOS 27 reads as
-    /// "unset", once (see ``ControlItemPlacement``).
+    /// Starts a new generation of control item autosave names, and removes the stored defaults of
+    /// the generation it replaces (see ``ControlItemPlacement``).
     ///
-    /// Call this before any control item is created. A position the user has dragged to some
-    /// other value is left alone.
+    /// The items take their new names the next time they are created, which is on the next launch.
     @available(macOS 27.0, *)
-    static func moveControlItemsOutOfOverflowIfNeeded() {
-        guard !Defaults.bool(forKey: .ice27DidMoveControlItemsOutOfOverflow) else {
-            return
+    static func startNewGeneration() {
+        let oldGeneration = Defaults.integer(forKey: .ice27ControlItemGeneration)
+        Defaults.set(max(oldGeneration, 1) + 1, forKey: .ice27ControlItemGeneration)
+        for identifier in ControlItem.Identifier.allCases {
+            let oldName = ControlItemPlacement.autosaveName(
+                for: identifier.rawValue,
+                generation: oldGeneration,
+                isMacOS27: true
+            )
+            Self[.preferredPosition, oldName] = nil
+            Self[.visible, oldName] = nil
+            Self[.visibleCC, oldName] = nil
         }
-        let visibleName = ControlItem.Identifier.visible.rawValue
-        let hiddenName = ControlItem.Identifier.hidden.rawValue
-        let migrated = ControlItemPlacement.migratedPositions(
-            visible: Self[.preferredPosition, visibleName],
-            hidden: Self[.preferredPosition, hiddenName]
-        )
-        if let visible = migrated.visible, visible != Self[.preferredPosition, visibleName] {
-            Self[.preferredPosition, visibleName] = visible
-        }
-        if let hidden = migrated.hidden, hidden != Self[.preferredPosition, hiddenName] {
-            Self[.preferredPosition, hiddenName] = hidden
-        }
-        Defaults.set(true, forKey: .ice27DidMoveControlItemsOutOfOverflow)
     }
 
     /// Performs some initial required setup work before the
     /// creation of a control item.
+    @MainActor
     fileprivate static func preflightSetup(for controlItem: ControlItem) {
-        let autosaveName = controlItem.identifier.rawValue
+        let autosaveName = controlItem.autosaveName
 
         // Visible and hidden control items should be added before
         // existing items in the status bar.
         //
-        // On macOS 27 a stored position of exactly 0 means "unset" to MenuBarAgent, which then
-        // places the item in the leftmost trailing slot, inside the system overflow group on a
-        // bar without room for every item (measured 2026-10-02). The seeds are 1 and 2 there.
+        // On macOS 27, MenuBarAgent reads this position only the first time it sees the status
+        // item's key, and 0 means "unset" there, so the seeds are 1 and 2. A key it already knows
+        // is never re-read, which is why a new generation (see ``ControlItemPlacement``) exists.
         if ControlItemDefaults[.preferredPosition, autosaveName] == nil {
             let slot: ControlItemPlacement.Slot = switch controlItem.identifier {
             case .visible: .visible

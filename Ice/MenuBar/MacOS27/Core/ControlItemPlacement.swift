@@ -14,6 +14,14 @@ import CoreGraphics
 /// the leftmost third-party items are folded into the system overflow group behind the "«"
 /// chevron, so an item seeded at 0 ends up inside it (measured on macOS 27.0, 2026-10-02, a
 /// notched 14-inch display: 0 landed at x=876, inside the group; 1 and 2 landed at x=1261).
+///
+/// MenuBarAgent reads that legacy value only the first time it sees the key
+/// `status:<bundleID>::<autosaveName>`. It logs `Using legacy NSStatusItemHost preferredPosition`
+/// for about ten seconds, then persists the placement to its own store (the `com.apple.MenuBar`
+/// preferences, kept in a data vault that even the user cannot read). After that the key is known,
+/// and the legacy value is ignored, even across restarts of the agent. Changing the stored seeds
+/// cannot move an item whose key is known, so the only way to be placed again is a new autosave
+/// name, which `autosaveName(for:generation:isMacOS27:)` builds from a generation counter.
 enum ControlItemPlacement {
     /// A control item, independent of `ControlItem.Identifier`.
     enum Slot {
@@ -34,12 +42,12 @@ enum ControlItemPlacement {
         }
     }
 
-    /// Moves positions stored by an earlier Ice 27.0 build out of the "unset" value.
+    /// The autosave name for a control item's status item.
     ///
-    /// The visible item's 0 becomes 1, and the hidden divider's 1 becomes 2 so the icon stays to
-    /// the right of the divider. Positions the user has dragged to any other value are returned
-    /// unchanged.
-    static func migratedPositions(visible: CGFloat?, hidden: CGFloat?) -> (visible: CGFloat?, hidden: CGFloat?) {
-        (visible == 0 ? 1 : visible, hidden == 1 ? 2 : hidden)
+    /// Before macOS 27 this is `base`. On 27 it carries a generation suffix, and a generation below
+    /// 1 (an absent setting) counts as 1. Raising the generation gives the item a key MenuBarAgent
+    /// has never seen, so it is placed again from the legacy position.
+    static func autosaveName(for base: String, generation: Int, isMacOS27: Bool) -> String {
+        isMacOS27 ? "\(base).g\(max(generation, 1))" : base
     }
 }
